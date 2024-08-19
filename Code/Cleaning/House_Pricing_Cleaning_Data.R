@@ -127,12 +127,12 @@ View(house_pricing_data_combined)
 
 house_pricing = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\house_pricing_combined.csv")
 
-town_dataset <- house_pricing[, c("Short_Postcode", "Town_City", "County")]
+town_dataset = house_pricing[, c("Short_Postcode", "Town_City", "County")]
 
-town_dataset <- town_dataset %>%
+town_dataset = town_dataset %>%
   filter(Short_Postcode != "Not available")
 
-town_dataset <- distinct(town_dataset)
+town_dataset = distinct(town_dataset)
 
 n_distinct(town_dataset$Town_City)
 

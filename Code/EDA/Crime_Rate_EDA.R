@@ -24,11 +24,11 @@ popn_2022 = popn_2023 %>%
 # Calculates the annual growth rate needed to convert the 2023 population estimate back to 2022 and creates a new data frame `popn_2022` with the 2022 population estimates.
 
 # Remove the last digit after the space in the Postcode column
-popn_2023 <- popn_2023 %>%
+popn_2023 = popn_2023 %>%
   mutate(Postcode = str_extract(Postcode, "^\\S+")) 
 
 # Remove the last digit after the space in the Postcode column
-popn_2022 <- popn_2022 %>%
+popn_2022 = popn_2022 %>%
   mutate(Postcode = str_extract(Postcode, "^\\S+")) 
 
 # Convert Year column to Date type and extract Postcode
@@ -47,14 +47,14 @@ combined_crime = bind_rows(bristol_crime, cornwall_crime)
 # Merges the Bristol and Cornwall crime datasets into one combined dataset for analysis.
 
 # Load the town dataset
-town_dataset <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\town_dataset.csv")
+town_dataset = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\town_dataset.csv")
 
 # Select both Short_Postcode and Town_City columns from town_dataset
-town_postcodes <- town_dataset %>%
+town_postcodes = town_dataset %>%
   select(Short_Postcode, Town_City)
 
 # Perform a left join with combined_crime on Postcode
-combined_crime_with_town <- combined_crime %>%
+combined_crime_with_town = combined_crime %>%
   left_join(town_postcodes, by = c("Postcode" = "Short_Postcode"))
 
 # View the resulting dataset
@@ -108,7 +108,7 @@ ggplotly(drug_offence_box_plot)
 # Vehicle Crime Rate per 10000 people in the Specific month of your choice in year 2022 (Radar Chart)
 
 # Filter for vehicle crime in a specific month (e.g., July) in 2022
-vehicle_crime_month <- combined_crime_with_town %>%
+vehicle_crime_month = combined_crime_with_town %>%
   filter(Crime_type == "Vehicle crime" & year(Year) == 2022 & month(Year) == 7) %>%  # Select rows for vehicle crime in July 2022
   left_join(popn_2022, by = "Postcode") %>%  # Join with population data on Postcode
   filter(!is.na(Population)) %>%  # Remove rows with missing population data
@@ -118,18 +118,18 @@ vehicle_crime_month <- combined_crime_with_town %>%
             VehicleCrimeRatePerTenThousand = (TotalVehicleOffences / Population) * 10000)  # Calculate the vehicle crime rate per 10,000 people
 
 # Prepare data for radar chart
-max_value <- max(vehicle_crime_month$VehicleCrimeRatePerTenThousand, na.rm = TRUE)  # Find the maximum value of vehicle crime rate
-min_value <- min(vehicle_crime_month$VehicleCrimeRatePerTenThousand, na.rm = TRUE)  # Find the minimum value of vehicle crime rate
+max_value = max(vehicle_crime_month$VehicleCrimeRatePerTenThousand, na.rm = TRUE)  # Find the maximum value of vehicle crime rate
+min_value = min(vehicle_crime_month$VehicleCrimeRatePerTenThousand, na.rm = TRUE)  # Find the minimum value of vehicle crime rate
 
-radar_data <- as.data.frame(rbind(
+radar_data = as.data.frame(rbind(
   rep(max_value, nrow(vehicle_crime_month)), # Create a row with the maximum value repeated for each Town/City (used for the maximum scale in the radar chart)
   rep(min_value, nrow(vehicle_crime_month)), # Create a row with the minimum value repeated for each Town/City (used for the minimum scale in the radar chart)
   vehicle_crime_month$VehicleCrimeRatePerTenThousand # Include the actual vehicle crime rate data for plotting
 ))
 
 # Set row and column names
-rownames(radar_data) <- c("Max", "Min", "Actual Data")  # Define row names for the radar chart data
-colnames(radar_data) <- vehicle_crime_month$Town_City  # Define column names based on Town/City names
+rownames(radar_data) = c("Max", "Min", "Actual Data")  # Define row names for the radar chart data
+colnames(radar_data) = vehicle_crime_month$Town_City  # Define column names based on Town/City names
 
 # Plot the radar chart
 radarchart(radar_data,  # Plot the radar chart using the `radarchart` function from the `fmsb` package
@@ -152,7 +152,7 @@ radarchart(radar_data,  # Plot the radar chart using the `radarchart` function f
 # Robbery crime rate per 10000 people in the specific month of your choice in year 2022 (Pie Chart)
 
 # Filter for robbery crimes in December 2022
-robbery_crime_month <- combined_crime_with_town %>%
+robbery_crime_month = combined_crime_with_town %>%
   filter(Crime_type == "Burglary" & year(Year) == 2022 & month(Year) == 12) %>%  # Select records where Crime_type is "Burglary", Year is 2022, and month is December
   left_join(popn_2022, by = "Postcode") %>%  # Join with the population dataset based on Postcode
   filter(!is.na(Population), !is.na(Town_City)) %>%  # Remove records where Population or Town_City is missing
@@ -164,7 +164,7 @@ robbery_crime_month <- combined_crime_with_town %>%
   )
 
 # Create a pie chart
-robbery_pie_chart <- robbery_crime_month %>%
+robbery_pie_chart = robbery_crime_month %>%
   mutate(Percentage = (RobberyCrimeRatePerTenThousand / sum(RobberyCrimeRatePerTenThousand)) * 100,  # Calculate percentage contribution of each Town/City's crime rate
          Label = paste0(round(Percentage, 1), "%")) %>%  # Create labels with rounded percentage values
   ggplot(aes(x = "", y = RobberyCrimeRatePerTenThousand, fill = Town_City)) +  # Set up the ggplot aesthetics for a pie chart
