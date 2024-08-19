@@ -64,6 +64,7 @@ top_recommendations = combined_data_with_scores %>%
   arrange(desc(final_score)) %>%
   select(ID, Postcode, Town, County.x, final_score) %>%
   distinct(Town, .keep_all = TRUE) %>%
+  rename(County = County.x, "Final Score" = final_score) %>%
   head(10)
 
 write.csv(top_recommendations, "C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Report\\TownScoreData.csv", row.names = FALSE)
