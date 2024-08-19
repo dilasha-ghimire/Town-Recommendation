@@ -1,74 +1,70 @@
-library(tidyverse)
+# Load necessary libraries
+library(dplyr)   
+library(tidyr)   
+library(scales)  
+library(purrr)   
+library(readr)
 
-# Load datasets from specified file paths
-bristolData <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Schools Data\\bristol_schools_data.csv")  
-cornwallData <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Schools Data\\cornwall_schools_data.csv")  
-bcHousePrice <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\house_pricing_combined.csv")
-bristol_crime <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Crime Rate Data\\bristol-crime-data.csv")
-cornwall_crime <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Crime Rate Data\\cornwall-crime-data.csv")
-combinedBroadbandData <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Broadband Data\\combined_broadband_data.csv")
-town_dataset <- read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\town_dataset.csv")
+# Read in the datasets
+house_data_bristol = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\house_pricing_bristol.csv")
+house_data_cornwall = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned House Pricing Data\\house_pricing_cornwall.csv")
+broadband_bristol = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Broadband Data\\bristol_broadband_data.csv")
+broadband_cornwall = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Broadband Data\\cornwall_broadband_data.csv")
+crime_bristol = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Crime Rate Data\\bristol-crime-data.csv")
+crime_cornwall = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Crime Rate Data\\cornwall-crime-data.csv")
+schools_bristol = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Schools Data\\bristol_schools_data.csv")  
+schools_cornwall = read_csv("C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Clean Data\\Cleaned Schools Data\\cornwall_schools_data.csv")  
 
-# Process Schools Data
-schools_data <- bind_rows(bristolData, cornwallData) %>%
-  group_by(Town) %>%  # Group data by Town
-  summarise(Attainment8Score = mean(ATT8SCR, na.rm = TRUE)) %>%  # Calculate the average Attainment 8 score
-  mutate(SchoolsScore = Attainment8Score / 9) %>%  # Normalize the score to a scale of 0-10
-  select(Town, SchoolsScore)  # Select relevant columns
+# Rename columns to ensure consistency across datasets
+crime_bristol = crime_bristol %>%
+  rename(Postcode = postcode, Town = city)
+crime_cornwall = crime_cornwall %>%
+  rename(Postcode = postcode, Town = city)
+house_data_bristol = house_data_bristol %>%
+  rename(Postcode = Postcode, Town = Town_City)
+house_data_cornwall = house_data_cornwall %>%
+  rename(Postcode = Postcode, Town = Town_City)
+broadband_bristol = broadband_bristol %>%
+  rename(Postcode = postcode_space, Town = county)
+broadband_cornwall = broadband_cornwall %>%
+  rename(Postcode = postcode_space, Town = county)
+schools_bristol = schools_bristol %>%
+  rename(Postcode = Postcode, Town = Town)
+schools_cornwall = schools_cornwall %>%
+  rename(Postcode = Postcode, Town = Town)
 
-# Process House Prices Data
-house_prices_data <- bcHousePrice %>%
-  mutate(Year = as.numeric(format(as.Date(Year), "%Y"))) %>%  # Convert Year from date format to numeric year
-  filter(Year == 2022) %>%  # Filter for the year 2022
-  group_by(Town_City) %>%  # Group data by Town
-  summarise(Price = mean(Housing_Price, na.rm = TRUE)) %>%  # Calculate the average house price
-  mutate(HouseScore = 10 - (Price / 120000)) %>%  # Normalize the price to a scale of 0-10
-  select(Town = Town_City, HouseScore)  # Rename column and select relevant columns
+# Combine Bristol datasets
+combined_bristol = reduce(list(house_data_bristol, broadband_bristol, crime_bristol, schools_bristol), full_join, by = c("Town", "Postcode"))
 
-# Process Crime Data
-crime_data <- bind_rows(bristol_crime, cornwall_crime) %>%
-  filter(Year == "2022") %>%  # Filter for the year 2022
-  filter(Crime_type %in% c("Violence and sexual offences", "Drugs", "Robbery", "Burglary")) %>%  # Filter relevant crime types
-  mutate(CrimeScore = case_when(
-    Crime_type %in% c("Drugs", "Violence and sexual offences") ~ 2,  # Assign scores for selected crime types
-    Crime_type %in% c("Robbery", "Burglary") ~ 3
-  )) %>%
-  group_by(city) %>%  # Group data by city
-  summarise(Rate = mean(CrimeScore, na.rm = TRUE)) %>%  # Calculate the average crime rate
-  mutate(CrimeScore = 10 - (Rate / 10)) %>%  # Normalize the rate to a scale of 0-10
-  rename(Town = city) %>%  # Rename column to match other datasets
-  select(Town, CrimeScore)  # Select relevant columns
+# Combine Cornwall datasets
+combined_cornwall = reduce(list(house_data_cornwall, broadband_cornwall, crime_cornwall, schools_cornwall), full_join, by = c("Town", "Postcode"))
 
-# Process Broadband Data
-broadband_data <- combinedBroadbandData %>%
-  group_by(postcode) %>%  # Group data by postcode
-  summarise(AverageDownload = mean(`Average.download.speed..Mbit.s.`, na.rm = TRUE)) %>%  # Calculate average download speed
-  mutate(DownloadScore = AverageDownload / 6) %>%  # Normalize the speed to a scale of 0-10
-  rename(Town = postcode) %>%  # Rename column to match other datasets
-  select(Town, DownloadScore)  # Select relevant columns
+# Combine Bristol and Cornwall data
+combined_data = bind_rows(combined_bristol, combined_cornwall)
 
-# Merge Town Data
-towns_data <- town_dataset %>%
-  rename(Town = Town_City, Short_Postcode = Short_Postcode)  # Rename columns to match other datasets
+# Function to calculate a final score based on crime rate, school quality, and house prices
+calculate_final_score = function(data) {
+  data %>%
+    mutate(
+      Housing_Price = ifelse(is.na(Housing_Price), median(data$Housing_Price, na.rm = TRUE), Housing_Price),
+      crime_rate = ifelse(is.na(Crime_ID), 0, 1), 
+      school_quality = ifelse(is.na(OFSTEDRATING), 0, as.numeric(OFSTEDRATING)),
+      crime_rate_score = 10 * (1 - rescale(crime_rate, to = c(0, 1))),
+      school_quality_score = 10 * rescale(school_quality, to = c(0, 1)),
+      house_price_score = 10 * (1 - rescale(Housing_Price, to = c(0, 1))),
+      final_score = 0.4 * crime_rate_score + 0.3 * school_quality_score + 0.3 * house_price_score
+    )
+}
 
-# Combine all data
-final_data <- towns_data %>%
-  left_join(schools_data, by = "Town") %>%  # Join with schools data
-  left_join(house_prices_data, by = "Town") %>%  # Join with house prices data
-  left_join(crime_data, by = "Town") %>%  # Join with crime data
-  left_join(broadband_data, by = "Town") %>%  # Join with broadband data
-  replace_na(list(SchoolsScore = 4, HouseScore = 4, CrimeScore = 4, DownloadScore = 4)) %>%  # Replace NA values with default score
-  distinct(Town, .keep_all = TRUE) %>%  # Remove duplicate towns, keeping the first occurrence
-  mutate(OverallScore = (HouseScore * 60) + (DownloadScore * 10) + (CrimeScore * 20) + (SchoolsScore * 10)) %>%  # Calculate overall score
-  arrange(desc(OverallScore)) %>%  # Sort towns by overall score in descending order
-  head(10)  # Select the top 10 towns
+# Function to the combined data
+combined_data_with_scores = calculate_final_score(combined_data)
 
-# Create a new dataset including only Town and OverallScore
-recommended_town <- final_data %>%
-  select(Town, OverallScore)
+# Filter top recommendations based on the highest final score
+top_recommendations = combined_data_with_scores %>%
+  arrange(desc(final_score)) %>%
+  select(ID, Postcode, Town, County.x, final_score) %>%
+  distinct(Town, .keep_all = TRUE) %>%
+  head(10)
 
-# Save the new dataset to a CSV file
-write_csv(recommended_town, "C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Report\\TownScoreData.csv")
+write.csv(top_recommendations, "C:\\Users\\ghimi\\Desktop\\Town-Recommendation\\Report\\TownScoreData.csv", row.names = FALSE)
 
-# Print the new dataset to console
-recommended_town
